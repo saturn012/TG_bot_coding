@@ -1,0 +1,168 @@
+{
+  "name": "Pars TG pars",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -620,
+        140
+      ],
+      "id": "44bdc8bc-d6d8-48bf-b8d6-080023ff772c",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "content": "http://46.173.28.60:3005/get-messages?channel=1577983092&limit=10&offsetDate=2025-05-15",
+        "height": 80,
+        "width": 620
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -120,
+        20
+      ],
+      "typeVersion": 1,
+      "id": "47200577-4a85-4b6c-9cd1-15003224d466",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -220,
+        480
+      ],
+      "id": "ef1edc92-6d03-4446-a9c1-77afb366de53",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "FxKwCdrv9WP2ArDh",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.query }}",
+        "options": {
+          "systemMessage": "=Ты умный ассистент, единственная задача которого правильно сформировывать ссылку в зависимости от запроса пользователя, отправлять ее в инструмент - Request\n\nПолучать с этого инструмента выборку постов и отправлять дальше в виде краткой выжимки.\n\nДля формирования ссылки использую следующие данные:\n\nФормат ссылки - http://31.128.37.239:3005/get-messages?channel={chanell}&limit={limit}&offsetDate={data}\n\nГде нужно подставить такие пармертры:\n\n{chanell} - id канала\n{limit} - цифрой количество постов для парсинга\n{data} - цифрой необходимую дату с которой начать парсинг, например 2025-05-15 (Это 15 мая 2025 года)\n\n\n{chanell} - нам передает пользователь\n{limit} - Ты должен сам решить сколько постов получить\n{data} - Дата начиная с которой назад парсим посты\n\nПосты мы получаем в таком формате:\n\n\n{\n\"id\": \n1575162,\n\"text\": \n\"Тут текст поста\",\n\"date\": \n1747671550\n}\n\nДата поста приходит в формате UNIX timestamp в секундах (не в миллисекундах), например: 1747733735. Используй UTC при преобразовании. Преобразуй такие числа в формат ISO или YYYY-MM-DD корректно.\n\nПример сформированной ссылки для передачи в инструмент - Request:\n\n\"http://31.128.37.239:3005/get-messages?channel=1577983092&limit=10&offsetDate=2025-05-15\"\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        0,
+        140
+      ],
+      "id": "5e9802b8-4cbc-46aa-9a0e-9ac3eb48870d",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "12121",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -60,
+        480
+      ],
+      "id": "27df5595-f178-4133-806f-28e9f090a2d7",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "toolDescription": "=Твоя задача подставить в ссылку http://31.128.37.239:3005/get-messages?channel={chanell}&limit={limit}&offsetDate={data} данные:\n\n{chanell} - id канала\n{limit} - цифрой количество постов для парсинга\n{data} - цифрой дата от которой начинать парсинг\n\n",
+        "url": "=http://31.128.37.239:3005/get-messages?channel={chanell}&limit={limit}&offsetDate={data}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        320,
+        480
+      ],
+      "id": "ba3fceaf-6d59-4b13-b458-81a6fdada7cc",
+      "name": "Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "885f673a-a9db-4c9b-be22-3fa4642d2785",
+  "meta": {
+    "instanceId": "e64f806ca5e87feaf2cd22bf873228348d3b02fdf477e2ae13651bb523123b57"
+  },
+  "id": "n1paJYYM0EEA3YOy",
+  "tags": [
+    {
+      "createdAt": "2025-05-14T20:44:57.094Z",
+      "updatedAt": "2025-05-14T20:44:57.094Z",
+      "id": "najthZB25ymAKTmw",
+      "name": "lessons"
+    }
+  ]
+}
