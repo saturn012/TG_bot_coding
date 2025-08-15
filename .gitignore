@@ -5,3 +5,9 @@ __pycache__/
 *.sqlite
 .DS_Store
 .n8n/
+node_modules/
+.env
+__pycache__/
+*.session
+*.sqlite
+.DS_Store
