@@ -6,6 +6,8 @@ from typing import List, Set
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 from telethon.errors import FloodWaitError
+from ingest.db import ensure_schema, connect
+from ingest.commands import register_command_handlers
 
 
 @dataclass(frozen=True)
@@ -29,6 +31,9 @@ async def main() -> None:
     settings = load_settings()
     os.makedirs(os.path.dirname(settings.session_path), exist_ok=True)
 
+    # DB schema
+    await ensure_schema()
+
     client = TelegramClient(settings.session_path, settings.api_id, settings.api_hash)
     await client.start()
     me = await client.get_me()
@@ -45,8 +50,25 @@ async def main() -> None:
                 return
 
             msg = event.message
-            # TODO: enqueue to analysis pipeline; placeholder log for now
-            print(f"[{msg.date}] chat={chat_id} sender={msg.from_id} len={len(msg.message or '')}")
+            text = msg.message or ""
+            # persist basic message row
+            conn = await connect()
+            try:
+                await conn.execute(
+                    """
+                    INSERT INTO messages(chat_id, message_id, sender_id, text, timestamp)
+                    VALUES($1,$2,$3,$4,$5)
+                    ON CONFLICT DO NOTHING
+                    """,
+                    chat_id,
+                    msg.id,
+                    int(getattr(msg, 'sender_id', 0) or 0),
+                    text,
+                    msg.date,
+                )
+            finally:
+                await conn.close()
+            print(f"[{msg.date}] chat={chat_id} id={msg.id} saved")
 
         except FloodWaitError as fw:
             await asyncio.sleep(int(fw.seconds) + 1)
@@ -54,6 +76,8 @@ async def main() -> None:
             print(f"Handler error: {ex}")
 
     print("Listening for new messages...")
+    # register commands in the same client (control chat)
+    register_command_handlers(client)
     await client.run_until_disconnected()
 
 
